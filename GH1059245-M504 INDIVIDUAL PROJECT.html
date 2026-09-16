@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Notebook Export</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; line-height: 1.6; max-width: 900px; margin: 40px auto; padding: 0 20px; color: #333; }
+        .cell { margin-bottom: 25px; padding: 10px; }
+        .code { font-family: monospace; background: #f5f5f5; padding: 15px; border-radius: 6px; white-space: pre-wrap; word-break: break-all; border: 1px solid #e1e1e1; color: #000; display: block; }
+        h1 { font-size: 28px; border-bottom: 2px solid #eee; padding-bottom: 8px; }
+        h2 { font-size: 22px; color: #2c3e50; margin-top: 30px; }
+        h3 { font-size: 18px; color: #34495e; }
+        table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        code { background: #f5f5f5; padding: 2px 4px; border-radius: 4px; font-family: monospace; }
+    </style>
+</head>
+<body>
+<div class="cell"><h3>STUDENT NAME: MERCY WANGUI MWANGI</h3>
+<h3>STUDENT ID: GH1059245</h3>
+<h3>COURSE TITLE: AI AND APPLICATIONS</h3>
+<h3>COURSE CODE: M5O4</h3>
+<h3>DATE: SEPTEMBER 16, 2026.</h3>
+<h2>Data-Driven Decision Making at GiftHaven: An Exploratory Data Analysis</h2>
+<h2>1. Introduction</h2>
+<p>GiftHaven, a European-based online retailer fonded in 2008 specializes in gifts, homeware, and lifestyle products.They provided me with transactional data for their sales from December 2010 to December 2011 containing 541,909 line-item records where each row represents a single product purchased in an order and key columns include:</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>InvoiceNo</code></td>
+<td>Unique order identifier</td>
+</tr>
+<tr>
+<td><code>StockCode</code></td>
+<td>Product code</td>
+</tr>
+<tr>
+<td><code>Description</code></td>
+<td>Product name</td>
+</tr>
+<tr>
+<td><code>Quantity</code></td>
+<td>Number of units purchased</td>
+</tr>
+<tr>
+<td><code>InvoiceDate</code></td>
+<td>Transaction timestamp</td>
+</tr>
+<tr>
+<td><code>UnitPrice</code></td>
+<td>Price per unit</td>
+</tr>
+<tr>
+<td><code>CustomerID</code></td>
+<td>Unique customer identifier</td>
+</tr>
+<tr>
+<td><code>Country</code></td>
+<td>Customer's shipping country</td>
+</tr>
+</tbody>
+</table>
+<p>GiftHaven's sales growth has stagnated over the last quarter leading to generic marketing, inefficient product selection, no customer retention strategy and unoptimized discounting. As their Data Science Consultant, I conducted an EDA to uncover actionable insights from this data, answer specific business questions with data evidence and provide clear, implementable recommendations to improve profitability, customer retention, and operational efficiency.</p></div>
+<div class="cell"><h2>2. Set-up and Data Loading</h2></div>
+<div class="cell"><pre class="code"><code>import pandas as pd
+import matplotlib.pyplot as plt
+from itertools import combinations
+from collections import Counter
+import warnings
+warnings.filterwarnings('ignore')
+
+df = pd.read_csv("/content/Online_Retail.csv.zip", compression="zip", encoding="latin1")
+df.head(2)</code></pre></div>
+<div class="cell"><h2>3. Initial Data Exploration</h2></div>
+<div class="cell"><pre class="code"><code>df.info()
+df.describe()
+print(df.isnull().sum())</code></pre></div>
+<div class="cell"><h3>Data Cleaning and Preprocessing</h3>
+<ol>
+<li>Handled Missing Data for <code>CustomerID</code> and <code>Description</code>.</li>
+<li>Removed cancellations (negative <code>Quantity</code>).</li>
+<li>Removed Negative UnitPrice errors.</li>
+<li>Converted Data Types: <code>CustomerID</code> to integers.</li>
+</ol></div>
+<div class="cell"><pre class="code"><code>df_cleaned = df.dropna(subset=['CustomerID', 'Description']).query('Quantity > 0 and UnitPrice > 0')
+df_cleaned['CustomerID'] = df_cleaned['CustomerID'].astype(int)
+print(df_cleaned.shape)</code></pre></div>
+<div class="cell"><h1></h1></div>
+<div class="cell"><h2>4. Feature Engineering</h2>
+<p>I extracted time-based features (hour, month, day) from the <code>InvoiceDate</code> for analysis. Created <code>TotalPrice</code> column (<code>Quantity</code> * <code>UnitPrice</code>) to represent total revenue.</p></div>
+<div class="cell"><pre class="code"><code>df_cleaned['InvoiceDate'] = pd.to_datetime(df_cleaned['InvoiceDate'])
+df_cleaned['Hour'] = df_cleaned['InvoiceDate'].dt.hour
+df_cleaned['Month'] = df_cleaned['InvoiceDate'].dt.month
+df_cleaned['DayOfWeek'] = df_cleaned['InvoiceDate'].dt.day_name()
+df_cleaned['TotalPrice'] = df_cleaned['Quantity'] * df_cleaned['UnitPrice']
+df_cleaned.head(2)</code></pre></div>
+<div class="cell"><h2>5. Analysis</h2></div>
+<div class="cell"><h2>Q1: What are the peak sales hours and Best days?</h2>
+<p>Business Importance: Knowing GiftHaven's peak sales hours and best days helps in:
+- Marketing: Schedule email campaigns for maximum visibility
+- Customer Service staffing:To support teams during busiest times
+- Operations: Ensure website and payment systems can handle traffic</p>
+<h2>Peak Sales Analysis</h2></div>
+<div class="cell"><pre class="code"><code>#Analysis by Hour
+hourly = df_cleaned.groupby('Hour')['TotalPrice'].sum().sort_values(ascending=False)
+print(hourly.head(3))
+hourly.plot(kind='bar', title='Revenue by Hour')
+plt.ylabel('Revenue (£)')
+plt.show()
+#Analysis by DayofWeek
+daily = df_cleaned.groupby('DayOfWeek')['TotalPrice'].sum().sort_values(ascending=False)
+print(daily.head(3))
+daily.plot(kind='bar', title='Revenue by DayofWeek')
+plt.ylabel('Revenue (£)')
+plt.show()</code></pre></div>
+<div class="cell"><p>The peak hour is 12 pm followed by 11 am and 1 pm.The revenue is significantly low before 8 am and after 5 pm. GiftHaven should consider scheduling marketing emails at 11:30 am to catch the 12 pm shopping peak.
+Thursday generates the highest revenue followed by Tuesday and Wednesday while Sunday has the lowest. GiftHaven should consider Sunday a rest day for marketing and run flash sales and promotions on Thursdays to maximize sales.
+They can also lower customer service staff after 6 pm when sales significantly drop.</p></div>
+<div class="cell"><h2>Q2: Who are GiftHaven's most valuable customers, and which segments need retention?</h2>
+<p>Business Importance: GiftHaven spends £50,000 yearly on marketing bt treats all customers equally.Without a proper understanding of customer value they waste budget on low-value segments while high-value customers receive no special treatment.RFM analysis will help to:</p>
+<ul>
+<li>Identify the top 10% of customers who generate 45% of revenue</li>
+<li>
+<p>Flag at-risk customers before they churn</p>
+</li>
+<li>
+<p>Enable personalised marketing campaign</p>
+</li>
+<li>Optimise marketing spend allocation</li>
+</ul>
+<h2>RFM Segmentation</h2></div>
+<div class="cell"><pre class="code"><code>import datetime as dt
+
+max_date = df_cleaned['InvoiceDate'].max()
+rfm = df_cleaned.groupby('CustomerID').agg({
+    'InvoiceDate': lambda x: (max_date - x.max()).days,
+    'InvoiceNo': 'count',
+    'TotalPrice': 'sum'
+})
+
+rfm.columns = ['Recency', 'Frequency', 'Monetary']
+rfm['R_Score'] = pd.qcut(rfm['Recency'], 5, labels=[5, 4, 3, 2, 1])
+rfm['F_Score'] = pd.qcut(rfm['Frequency'], 5, labels=[1, 2, 3, 4, 5])
+rfm['M_Score'] = pd.qcut(rfm['Monetary'], 5, labels=[1, 2, 3, 4, 5])
+
+def segment_customer(row):
+    R = int(row['R_Score'])
+    F = int(row['F_Score'])
+    M = int(row['M_Score'])
+
+    if R >= 4 and F >= 4 and M >= 4:
+        return 'Champions'
+
+    if F >= 4 and M >= 4:
+        return 'Loyal'
+
+    if R >= 3 and F >= 3 and M >= 3:
+        return 'Potential Loyalists'
+
+    if R <= 2 and F <= 2:
+        return 'At Risk'
+
+    if R <= 2 and F >= 4:
+        return 'Cannot Lose'
+
+    if R >= 4 and F <= 2:
+        return 'New'
+
+    return 'Others'
+
+rfm['Segment'] = rfm.apply(segment_customer, axis=1)
+
+print(rfm['Segment'].value_counts())
+print('Percentage per segment')
+print((rfm['Segment'].value_counts() / len(rfm) * 100).round(1))</code></pre></div>
+<div class="cell"><p><strong>Overall Customer Distribution:</strong></p>
+<p>RFM analysis segmented 4,338 unique customers into 7 groups. Champions (932 customers, 21.5%) represent GiftHaven's most valuable customers, generating the highest revenue. At Risk (1,063 customers, 24.5%) is the largest segment, indicating a high churn risk.</p>
+<p><strong>Key Insights:</strong></p>
+<ol>
+<li>Champions: High recency, frequency, and spend; implement a VIP loyalty programme with exclusive discounts and early access to new products.</li>
+<li>At Risk: Used to purchase but have stopped recently; launch a targeted win-back campaign with personalised offers.</li>
+<li>Loyal Customers: Maintain their satisfaction with regular engagement and cross-selling.</li>
+<li>New Customers: Recent first-time buyers need to be converted to repeat purchasers; send welcome emails with product recommendations.</li>
+</ol></div>
+<div class="cell"><h2>Q3: Which products are frequently purchased together?</h2>
+<p><strong>Business Importance:</strong>
+Understanding which products are frequently purchased together enables GiftHaven to:
+- Create effective product bundles
+- Increase average order value
+- Design targeted promotions</p>
+<h2>Market Basket Analysis</h2></div>
+<div class="cell"><pre class="code"><code>inv_prods = df_cleaned.groupby('InvoiceNo')['Description'].apply(list)
+pairs = {}
+for prods in inv_prods:
+    if len(prods) > 1:
+        for pair in combinations(sorted(set(prods)), 2):
+            pairs[pair] = pairs.get(pair, 0) + 1
+top_pairs = Counter(pairs).most_common(5)
+for (a,b), cnt in top_pairs:
+    print(f"{a[:30]} & {b[:30]} : {cnt} times")</code></pre></div>
+<div class="cell"><p>The analysis identified the top 5 product pairs:</p>
+<table>
+<thead>
+<tr>
+<th>Rank</th>
+<th>Product 1</th>
+<th>Product 2</th>
+<th>Times Purchased Together</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>JUMBO BAG PINK POLKADOT</td>
+<td>JUMBO BAG RED RETROSPOT</td>
+<td>546</td>
+</tr>
+<tr>
+<td>2</td>
+<td>GREEN REGENCY TEACUP AND SAUCE</td>
+<td>ROSES REGENCY TEACUP AND SAUCE</td>
+<td>541</td>
+</tr>
+<tr>
+<td>3</td>
+<td>ALARM CLOCK BAKELIKE GREEN</td>
+<td>ALARM CLOCK BAKELIKE RED</td>
+<td>530</td>
+</tr>
+<tr>
+<td>4</td>
+<td>LUNCH BAG PINK POLKADOT</td>
+<td>LUNCH BAG RED RETROSPOT</td>
+<td>523</td>
+</tr>
+<tr>
+<td>5</td>
+<td>LUNCH BAG BLACK SKULL</td>
+<td>LUNCH BAG RED RETROSPOT</td>
+<td>517</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key Insights:</strong></p>
+<ol>
+<li>Customers frequently buy the same product in different colours (e.g., Pink Polka + Red Retro, Green + Red clocks).</li>
+<li>Pink Polka bags are often bought with Red Retro bags, indicating customers prefer coordinating items.</li>
+<li>Teacups and saucers are frequently purchased together, confirming the need to display and promote them together.</li>
+</ol>
+<p><strong>Business Recommendations:</strong></p>
+<ol>
+<li>Create "Colour Collection" bundles with 10% discount for purchasing pairs.</li>
+<li>When a customer views a Pink Polka bag, recommend the Red Retro version.</li>
+<li>Display teacups with matching saucers on the same product page.</li>
+<li>Send "Complete the Look" emails to customers who bought one item from a pair.</li>
+<li>Consider adding more colour‑matching products (e.g., matching mugs, cushions).</li>
+</ol></div>
+<div class="cell"><h2>Q4: Which countries generate the highest revenue?</h2>
+<p>Business Importance: This will help the company to identify the most valuable international markets thus guide on marketing as well as expansion decisions.</p>
+<h2>Geographic Analysis</h2></div>
+<div class="cell"><pre class="code"><code># Revenue by country
+country_revenue = df_cleaned.groupby('Country')['TotalPrice'].sum().sort_values(ascending=False)
+#Bar chart
+country_revenue.head(10).plot(kind='bar', figsize=(10, 6), color='blue', title='Revenue by Country')
+plt.ylabel('Revenue (£)')
+plt.show()
+
+print("Top 10 Countries by Revenue:")
+print(country_revenue.head(10))</code></pre></div>
+<div class="cell"><p>The UK generates the highest revenue followed by Netherlands and Ireland while Belgium and Sweden sit at the bottom. GiftHaven should focus on more marketing campaigns in the top region(UK) so as to maintain lifetime value.For the low revenue generating areas like Sweden, the company should investigate the undelying causes eg high rates of cross border shipping and allocate lower marketing resources.</p></div>
+<div class="cell"><h2>Q5: What is the monthly sales trend?</h2>
+<p>Business Importance: This helps the company to understand the monthly sales trajectory, plan on marketing and promotional timing as well as plan clearance sales.</p>
+<h2>Time series analysis</h2></div>
+<div class="cell"><pre class="code"><code># Monthly sales trend
+monthly_sales = df_cleaned.set_index('InvoiceDate')['TotalPrice'].resample('M').sum()
+
+print("Monthly Sales Trend:")
+print(monthly_sales)
+
+monthly_sales.plot(kind='line', title='Monthly Sales Trend', figsize=(12, 6))
+plt.ylabel('Total Revenue (£)')
+plt.show()</code></pre></div>
+<div class="cell"><p><strong>Monthly Sales Trend Analysis</strong></p>
+<p>Sales peak in November and December which could be driven by holiday shopping season (Christmas, New Year). GiftHaven should increase inventory and avoid stockouts for November-December. Sales drop significantly in January (post holiday season). GiftHaven should plan post-holiday promotions during this period. Sales increase gradually from August to October. GiftHaven should increase marketing resources during this period.</p></div>
+<div class="cell"><h2>Q6: What are the top products by revenue?</h2>
+<p>Business Importance: Knowing the top revenue generating products will enable GiftHaven to ensure stock availability, focus marketing efforts on best-selling items and optimize product placement on the website.</p>
+<h2>Product Performance Analysis</h2></div>
+<div class="cell"><pre class="code"><code>top_prod = df_cleaned.groupby('Description')['TotalPrice'].sum().nlargest(5)
+print(top_prod)
+plt.figure(figsize=(12, 6))
+bars = plt.barh(top_prod.index, top_prod.values, color='skyblue')
+for bar in bars:
+    width = bar.get_width()
+    plt.text(width + 100, bar.get_y() + bar.get_height()/2,
+             f'£{width:,.2f}',
+             va='center', ha='left', fontsize=10)
+plt.xlabel('Total Revenue (£)', fontsize=12)
+plt.ylabel('Product Description', fontsize=12)
+plt.title('Top 5 Products by Revenue', fontsize=16, fontweight='bold')
+plt.tight_layout()
+plt.show()</code></pre></div>
+<div class="cell"><h2></h2></div>
+<div class="cell"><h3>Explanation of Results</h3>
+<p>"WHITE HANGING HEART T-LIGHT HOLDER" is the top revenue generator. Many top products are decorative gift items and home accessories.
+GiftHaven should leverage these top-performing products for marketing campaigns and consider expanding product lines in these popular categories.</p></div>
+<div class="cell"><h2>Q7: What is the customer churn rate?</h2>
+<p>Business Importance: This will help to predict the seasonal revenue and to prioritise customer retention.</p></div>
+<div class="cell"><pre class="code"><code>max_date = df_cleaned['InvoiceDate'].max()
+cutoff = max_date - timedelta(days=90)
+last = df_cleaned.groupby('CustomerID')['InvoiceDate'].max().reset_index()
+last['Churned'] = last['InvoiceDate'] < cutoff
+churn_rate = last['Churned'].mean() * 100
+print(f"Churn rate: {churn_rate:.2f}%")
+spend = df_cleaned.groupby('CustomerID')['TotalPrice'].sum()
+churn_spend = last.merge(spend, on='CustomerID')
+print(churn_spend.groupby('Churned')['TotalPrice'].mean())</code></pre></div>
+<div class="cell"><h3>Explanation of results</h3>
+<p>33.40% churned in the last 90 days and spent 74% less than retained ones. GiftHaven should launch win-back campaigns for the Consumer segment.</p></div>
+<div class="cell"><h2>6. Final Discussion and Conclusion</h2>
+<p><strong>Key Insights</strong></p>
+<ol>
+<li>RFM: Champions (21.5%) generate the highest revenue while 24.5% are at risk of churning and require win-back.</li>
+<li>
+<p>Peak sales happen on Thursday 12 PM which enables the company to plan or time marketing accordingly.</p>
+</li>
+<li>
+<p>Highest sales occur during holiday season dropping in January. The company can use this information to plan inventory and promotion.</p>
+</li>
+</ol>
+<p><strong>Strengths</strong>
+*   RFM segmentation and market basket analysis provide actionable insights.
+*   The diverse business questions cover customers, products, time and location aspects.
+*   Comprehensive data cleaning, pre-processing and feature engineering eliminates bias and enhances accuracy.
+*   Early win-back strategies flag declining metrics to reduce customer churn.</p>
+<p><strong>Limitations</strong></p>
+<p>Only one year of data (lacks depth of seasonality analysis); missing satisfaction and demographic data.</p>
+<p><strong>Recommendations</strong>
+1. Launch VIP loyalty programme for Champions.
+2. Send win-back offers for At-Risk tiers.
+3. Schedule marketing emails for Thursday 11:30 AM.
+4. Increase inventory for December.
+5. Bundle/discout top product pairs.  </p></div>
+<div class="cell"><h2>7. REFERENCES</h2>
+<h3>Data Source</h3>
+<p>Pedersen, U.T. (2023) <em>Online Retail Dataset</em>. Kaggle. Available at: https://www.kaggle.com/datasets/ulrikthygepedersen/online-retail-dataset (Accessed: 30 August 2026).</p>
+<h3>Python Libraries</h3>
+<p>Pandas, Matplotlib, Datetime</p></div>
+</body>
+</html>
